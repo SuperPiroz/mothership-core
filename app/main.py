@@ -9,7 +9,8 @@ from app import __version__
 from app.api.health import router as health_router
 from app.api.v1 import api_v1_router
 from app.config import get_settings
-from app.database import init_db
+from app.database import AsyncSessionLocal, init_db
+from app.services.auth_service import seed_initial_admin
 
 settings = get_settings()
 
@@ -43,11 +44,13 @@ async def lifespan(app: FastAPI):
         __version__,
         settings.ENVIRONMENT,
     )
-    # Ensure database tables exist in development / test
+    # Ensure database tables and initial admin account exist in development / test
     if settings.ENVIRONMENT != "production":
         try:
             await init_db()
             logger.info("Database schema initialized successfully")
+            async with AsyncSessionLocal() as session:
+                await seed_initial_admin(session)
         except Exception as exc:
             logger.warning("Could not auto-initialize DB schema on startup: %s", exc)
     yield

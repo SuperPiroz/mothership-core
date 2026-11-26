@@ -3,7 +3,9 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import require_admin
 from app.database import get_db
+from app.models.user import User
 from app.schemas.service import ServiceCreate, ServiceResponse, ServiceUpdate
 from app.services import service_catalog
 
@@ -32,6 +34,7 @@ async def list_services(
 )
 async def register_service(
     service_in: ServiceCreate,
+    current_admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Add a new service to the catalog."""
@@ -65,6 +68,7 @@ async def get_service(
 async def update_service(
     service_id: uuid.UUID,
     service_in: ServiceUpdate,
+    current_admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Update metadata for an existing service."""
@@ -84,6 +88,7 @@ async def update_service(
 )
 async def delete_service(
     service_id: uuid.UUID,
+    current_admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a service from the catalog."""

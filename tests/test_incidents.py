@@ -3,12 +3,13 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_create_and_search_incidents(async_client: AsyncClient):
+async def test_create_and_search_incidents(async_client: AsyncClient, admin_headers: dict):
     """Test incident creation, search filtering, and lifecycle."""
     # 1. Create a service to associate incident with
     service_res = await async_client.post(
         "/api/v1/services",
         json={"name": "DNS Controller", "category": "system", "runtime": "k8s"},
+        headers=admin_headers,
     )
     service_id = service_res.json()["id"]
 
