@@ -7,7 +7,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app import __version__
 from app.api.health import router as health_router
+from app.api.v1 import api_v1_router
 from app.config import get_settings
+from app.database import init_db
 
 settings = get_settings()
 
@@ -41,7 +43,13 @@ async def lifespan(app: FastAPI):
         __version__,
         settings.ENVIRONMENT,
     )
-    # Optional telemetry or warmup here
+    # Ensure database tables exist in development / test
+    if settings.ENVIRONMENT != "production":
+        try:
+            await init_db()
+            logger.info("Database schema initialized successfully")
+        except Exception as exc:
+            logger.warning("Could not auto-initialize DB schema on startup: %s", exc)
     yield
     logger.info("Shutting down %s", settings.PROJECT_NAME)
 
@@ -67,6 +75,7 @@ app.add_middleware(
 
 # Routers
 app.include_router(health_router)
+app.include_router(api_v1_router)
 
 
 @app.get("/", tags=["Root"])

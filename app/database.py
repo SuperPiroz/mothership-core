@@ -44,6 +44,15 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+async def init_db() -> None:
+    """Initialize database tables (used for development and testing)."""
+    # Import all models so metadata knows about them
+    import app.models  # noqa: F401
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
 async def check_database_health() -> tuple[bool, str]:
     """Check whether database connection is active and responsive."""
     try:
