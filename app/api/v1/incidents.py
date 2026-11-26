@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -30,6 +31,55 @@ async def list_incidents(
         skip=skip,
         limit=limit,
     )
+
+
+# ==============================================================================
+# OWASP SÅRBARHETSDEMONSTRATION (FÖR SECURE DEVOPS STEG 1 - DEMO BRANCH ENBART)
+# ==============================================================================
+
+
+@router.get(
+    "/demo/vulnerable-search",
+    summary="[OWASP DEMO A03] Vulnerable search via raw SQL string concatenation",
+)
+async def vulnerable_search(
+    q: str = Query(..., description="Unsanitized raw search query"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    DEMO ONLY: Vulnerable to SQL Injection (OWASP A03:2021).
+    Direct string interpolation into raw SQL without parameterization.
+    Exploit with payload: test' OR '1'='1
+    """
+    raw_query = (
+        "SELECT id, title, description, severity, status "
+        f"FROM incidents WHERE title LIKE '%{q}%'"
+    )
+    result = await db.execute(text(raw_query))
+    rows = result.mappings().all()
+    return [dict(row) for row in rows]
+
+
+@router.delete(
+    "/demo/insecure-delete/{incident_id}",
+    summary="[OWASP DEMO A01] Insecure delete without authorization check (IDOR)",
+)
+async def insecure_delete(
+    incident_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    DEMO ONLY: Vulnerable to Broken Access Control / IDOR (OWASP A01:2021).
+    Allows any unauthenticated user to delete arbitrary incidents by ID.
+    """
+    incident = await incident_service.get_incident_by_id(db, incident_id)
+    if not incident:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Incident not found",
+        )
+    await incident_service.delete_incident(db, incident)
+    return {"message": "Incident deleted without authorization check"}
 
 
 @router.post(
