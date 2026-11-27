@@ -19,24 +19,23 @@ jobs:
     name: Lint, Test & SCA Audit
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: mothership_core
-          POSTGRES_USER: core_user
-          POSTGRES_PASSWORD: devpassword123
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U core_user -d mothership_core"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Start PostgreSQL container
+        run: |
+          docker run -d --name test-postgres \
+            -p 5432:5432 \
+            -e POSTGRES_DB=mothership_core \
+            -e POSTGRES_USER=core_user \
+            -e POSTGRES_PASSWORD=devpassword123 \
+            postgres:16-alpine
+          until docker exec test-postgres pg_isready -U core_user -d mothership_core; do
+            echo "Waiting for PostgreSQL to start..."
+            sleep 1
+          done
+          echo "PostgreSQL is ready!"
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
